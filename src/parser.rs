@@ -1,3 +1,8 @@
+#[derive(Debug)]
+pub enum Token<'a> {
+    Text(&'a str),
+}
+
 pub struct Tokens<'a> {
     text: &'a str,
 }
@@ -9,41 +14,55 @@ enum State {
 }
 
 impl<'a> Iterator for Tokens<'a> {
-    type Item = &'a str;
+    type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut end = 0;
+        self.text = self.text.trim_start();
+        if self.text.is_empty() {
+            return None;
+        }
+        let mut length = 0;
         let mut state = State::Unquoted;
-
-        let mut chars = self.text.chars();
-        while let Some(c) = chars.next() {
-            match c {
-                ' ' => {
-                    if end == 0 {
+        for c in self.text.chars() {
+            match state {
+                State::Unquoted => match c {
+                    '\'' => {
+                        state = State::SingleQuotes;
                         self.text = &self.text[1..];
-                    } else {
+                    }
+                    '"' => {
+                        state = State::DoubleQuotes;
+                        self.text = &self.text[1..];
+                    }
+                    ' ' => {
                         break;
                     }
+                    _ => length += 1,
+                },
+                State::SingleQuotes => {
+                    if c == '\'' {
+                        break;
+                    } else {
+                        length += 1;
+                    }
                 }
-                '\'' => match state {
-                    State::SingleQuotes => break,
-                    _ => state = State::SingleQuotes,
-                },
-                '"' => match state {
-                    State::DoubleQuotes => break,
-                    _ => state = State::DoubleQuotes,
-                },
-
-                _ => end += 1,
+                State::DoubleQuotes => {
+                    if c == '"' {
+                        break;
+                    } else {
+                        length += 1;
+                    }
+                }
             }
         }
-        if end == 0 {
-            None
-        } else {
-            let res = Some(&self.text[..end]);
-            self.text = &self.text[end..];
-            res
+        dbg!(length);
+        let res = &self.text[..length];
+        self.text = &self.text[length..];
+        match state {
+            State::SingleQuotes | State::DoubleQuotes => self.text = &self.text[1..],
+            _ => {}
         }
+        Some(Token::Text(res))
     }
 }
 
