@@ -2,6 +2,8 @@
 pub enum Token<'a> {
     Text(&'a str),
     Semicolon,
+    Pipe,
+    DoublePipe,
 }
 
 pub struct Tokens<'a> {
@@ -12,6 +14,7 @@ enum State {
     Unquoted,
     SingleQuotes,
     DoubleQuotes,
+    Symbol,
 }
 
 impl<'a> Iterator for Tokens<'a> {
@@ -22,6 +25,7 @@ impl<'a> Iterator for Tokens<'a> {
         if self.text.is_empty() {
             return None;
         }
+        let mut symbol = None;
         let mut length = 0;
         let mut state = State::Unquoted;
         for c in self.text.chars() {
@@ -44,6 +48,14 @@ impl<'a> Iterator for Tokens<'a> {
                         }
                         break;
                     }
+                    '|' => {
+                        if length > 0 {
+                            break;
+                        }
+                        eprintln!("Set symbol to {}", c);
+                        state = State::Symbol;
+                        symbol = Some(c);
+                    }
                     _ => length += 1,
                 },
                 State::SingleQuotes => {
@@ -60,6 +72,10 @@ impl<'a> Iterator for Tokens<'a> {
                         length += 1;
                     }
                 }
+                State::Symbol => {
+                    length = if c == symbol.unwrap() { 2 } else { 1 };
+                    break;
+                }
             }
         }
         dbg!(length);
@@ -71,6 +87,8 @@ impl<'a> Iterator for Tokens<'a> {
         }
         match res {
             ";" => Some(Token::Semicolon),
+            "|" => Some(Token::Pipe),
+            "||" => Some(Token::DoublePipe),
             _ => Some(Token::Text(res)),
         }
     }
