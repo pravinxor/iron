@@ -3,7 +3,11 @@ pub enum Token<'a> {
     Text(&'a str),
     Semicolon,
     Pipe,
-    DoublePipe,
+    Or,
+    Background,
+    And,
+    Redirect,
+    Append,
 }
 
 pub struct Tokens<'a> {
@@ -48,11 +52,10 @@ impl<'a> Iterator for Tokens<'a> {
                         }
                         break;
                     }
-                    '|' => {
+                    '|' | '&' | '>' => {
                         if length > 0 {
                             break;
                         }
-                        eprintln!("Set symbol to {}", c);
                         state = State::Symbol;
                         symbol = Some(c);
                     }
@@ -85,12 +88,17 @@ impl<'a> Iterator for Tokens<'a> {
             State::SingleQuotes | State::DoubleQuotes => self.text = &self.text[1..],
             _ => {}
         }
-        match res {
-            ";" => Some(Token::Semicolon),
-            "|" => Some(Token::Pipe),
-            "||" => Some(Token::DoublePipe),
-            _ => Some(Token::Text(res)),
-        }
+
+        Some(match res {
+            ";" => Token::Semicolon,
+            "|" => Token::Pipe,
+            "||" => Token::Or,
+            "&" => Token::Background,
+            "&&" => Token::And,
+            ">" => Token::Redirect,
+            ">>" => Token::Append,
+            _ => Token::Text(res),
+        })
     }
 }
 
