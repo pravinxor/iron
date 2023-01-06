@@ -22,7 +22,7 @@ enum State {
 }
 
 impl<'a> Iterator for Tokens<'a> {
-    type Item = Token<'a>;
+    type Item = Result<Token<'a>, &'static str>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.text = self.text.trim_start();
@@ -81,15 +81,20 @@ impl<'a> Iterator for Tokens<'a> {
                 }
             }
         }
-        dbg!(length);
         let res = &self.text[..length];
         self.text = &self.text[length..];
         match state {
-            State::SingleQuotes | State::DoubleQuotes => self.text = &self.text[1..],
+            State::SingleQuotes | State::DoubleQuotes => {
+                if self.text.len() > 1 {
+                    self.text = &self.text[1..];
+                } else {
+                    return Some(Err("Unclosed Quotes"));
+                }
+            }
             _ => {}
         }
 
-        Some(match res {
+        Some(Ok(match res {
             ";" => Token::Semicolon,
             "|" => Token::Pipe,
             "||" => Token::Or,
@@ -98,7 +103,7 @@ impl<'a> Iterator for Tokens<'a> {
             ">" => Token::Redirect,
             ">>" => Token::Append,
             _ => Token::Text(res),
-        })
+        }))
     }
 }
 
