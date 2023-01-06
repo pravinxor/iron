@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub enum Token<'a> {
     Text(&'a str),
+    Semicolon,
 }
 
 pub struct Tokens<'a> {
@@ -37,6 +38,12 @@ impl<'a> Iterator for Tokens<'a> {
                     ' ' => {
                         break;
                     }
+                    ';' => {
+                        if length == 0 {
+                            length = 1;
+                        }
+                        break;
+                    }
                     _ => length += 1,
                 },
                 State::SingleQuotes => {
@@ -62,7 +69,10 @@ impl<'a> Iterator for Tokens<'a> {
             State::SingleQuotes | State::DoubleQuotes => self.text = &self.text[1..],
             _ => {}
         }
-        Some(Token::Text(res))
+        match res {
+            ";" => Some(Token::Semicolon),
+            _ => Some(Token::Text(res)),
+        }
     }
 }
 
