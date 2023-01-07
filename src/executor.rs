@@ -17,8 +17,8 @@ where
                 _ => panic!(),
             });
         if let Some(program) = arguments.next() {
-            let mut process = std::process::Command::new(program);
-            process.args(arguments);
+            let mut command = std::process::Command::new(program);
+            command.args(arguments);
             let stdin = if let Some(child_stdout) = child_stdout {
                 child_stdout.into()
             } else {
@@ -30,8 +30,8 @@ where
             } else {
                 std::process::Stdio::inherit()
             };
-            let spawned = process.stdin(stdin).stdout(stdout).spawn();
-            child_stdout = spawned?.stdout.take();
+            let process = command.stdin(stdin).stdout(stdout).spawn();
+            child_stdout = process?.stdout.take();
         } else {
             break;
         }
