@@ -6,7 +6,7 @@ pub fn execute<'a, T>(tokens: &mut std::iter::Peekable<T>) -> Result<(), Box<dyn
 where
     T: Iterator<Item = Result<crate::parser::Token<'a>, &'static str>>,
 {
-    let mut child = None;
+    let mut child_stdout: Option<std::process::ChildStdout> = None;
     loop {
         let mut arguments = tokens
             .by_ref()
@@ -17,8 +17,21 @@ where
                 _ => panic!(),
             });
         if let Some(program) = arguments.next() {
-            let res = std::process::Command::new(program).args(arguments).spawn();
-            child = Some(res?);
+            let mut process = std::process::Command::new(program);
+            process.args(arguments);
+            let stdin = if let Some(child_stdout) = child_stdout {
+                child_stdout.into()
+            } else {
+                std::process::Stdio::inherit()
+            };
+            let stdout = if matches!(tokens.peek(), Some(Ok(crate::parser::Token::Pipe))) {
+                tokens.next().unwrap()?;
+                std::process::Stdio::piped()
+            } else {
+                std::process::Stdio::inherit()
+            };
+            let spawned = process.stdin(stdin).stdout(stdout).spawn();
+            child_stdout = spawned?.stdout.take();
         } else {
             break;
         }
