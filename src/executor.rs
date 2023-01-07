@@ -17,6 +17,11 @@ fn command(
     }
 }
 
+fn pipe(child_command: &mut std::process::Command) -> Result<std::process::Child, std::io::Error> {
+    child_command.stdout(std::process::Stdio::piped());
+    child_command.spawn()
+}
+
 pub fn execute<'a, T>(tokens: &mut std::iter::Peekable<T>) -> Result<(), Box<dyn std::error::Error>>
 where
     T: Iterator<Item = Result<crate::parser::Token<'a>, &'static str>>,
@@ -33,11 +38,10 @@ where
             crate::parser::Token::Pipe => {
                 if child_process.is_some() {
                     return Err("Unexpected additional pipe".into());
-                }
-                if let Some(mut child_command) = child_command.take() {
-                    child_command.stdout(std::process::Stdio::piped());
-                    let process = child_command.spawn()?;
-                    child_process = Some(process)
+                } else if let Some(mut command) = child_command.take() {
+                    child_process = Some(pipe(&mut command)?);
+                } else {
+                    return Err("Cannot pipe a nonexistent process".into());
                 }
             }
             crate::parser::Token::Redirect => {}
