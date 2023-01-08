@@ -28,12 +28,28 @@ where
 {
     let mut child_command: Option<std::process::Command> = None;
     let mut child_process: Option<std::process::Child> = None;
-    //let mut previous_token = None;
+    let mut previous_token = None;
     for token in tokens {
         let token = token?;
         match token {
             crate::parser::Token::Text(text) => {
-                child_command = Some(command(text, &mut child_command, &mut child_process));
+                if let Some(previous_token) = previous_token.take() {
+                    match previous_token {
+                        crate::parser::Token::Redirect => {
+                            dbg!(text);
+                            let file = std::fs::File::create(text).unwrap();
+                            if let Some(mut command) = child_command.take() {
+                                command.stdout(file);
+                                child_process = Some(command.spawn()?);
+                            } else {
+                                return Err("No output to redirect".into());
+                            }
+                        }
+                        _ => {}
+                    }
+                } else {
+                    child_command = Some(command(text, &mut child_command, &mut child_process));
+                }
             }
             crate::parser::Token::Pipe => {
                 if child_process.is_some() {
@@ -44,13 +60,15 @@ where
                     return Err("Cannot pipe a nonexistent process".into());
                 }
             }
-            crate::parser::Token::Redirect => {}
+            crate::parser::Token::Redirect => {
+                previous_token = Some(crate::parser::Token::Redirect);
+            }
 
             _ => return Err("Unhandled token".into()),
         }
     }
     if let Some(mut remaining_child) = child_command {
-        remaining_child.spawn()?;
+        remaining_child.spawn()?.wait_with_output()?;
     }
 
     Ok(())
