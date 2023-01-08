@@ -1,8 +1,11 @@
-fn command(
-    text: &str,
+fn command<S>(
+    text: S,
     child_command: &mut Option<std::process::Command>,
     child_process: &mut Option<std::process::Child>,
-) -> std::process::Command {
+) -> std::process::Command
+where
+    S: AsRef<std::ffi::OsStr>,
+{
     if let Some(mut command) = child_command.take() {
         command.arg(text);
         command
@@ -30,7 +33,6 @@ where
     P: AsRef<std::path::Path>,
 {
     let file = std::fs::File::create(path).unwrap();
-
     command.stdout(file);
     return command.spawn();
 }
