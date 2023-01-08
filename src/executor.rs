@@ -22,6 +22,19 @@ fn pipe(child_command: &mut std::process::Command) -> Result<std::process::Child
     child_command.spawn()
 }
 
+fn redirect<P>(
+    path: P,
+    command: &mut std::process::Command,
+) -> Result<std::process::Child, std::io::Error>
+where
+    P: AsRef<std::path::Path>,
+{
+    let file = std::fs::File::create(path).unwrap();
+
+    command.stdout(file);
+    return command.spawn();
+}
+
 pub fn execute<'a, T>(tokens: &mut std::iter::Peekable<T>) -> Result<(), Box<dyn std::error::Error>>
 where
     T: Iterator<Item = Result<crate::parser::Token<'a>, &'static str>>,
@@ -36,11 +49,8 @@ where
                 if let Some(previous_token) = previous_token.take() {
                     match previous_token {
                         crate::parser::Token::Redirect => {
-                            dbg!(text);
-                            let file = std::fs::File::create(text).unwrap();
                             if let Some(mut command) = child_command.take() {
-                                command.stdout(file);
-                                child_process = Some(command.spawn()?);
+                                child_process = Some(redirect(text, &mut command)?);
                             } else {
                                 return Err("No output to redirect".into());
                             }
