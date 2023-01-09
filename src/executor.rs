@@ -34,7 +34,7 @@ where
 {
     let file = std::fs::File::create(path).unwrap();
     command.stdout(file);
-    return command.spawn();
+    command.spawn()
 }
 
 pub fn execute<'a, T>(tokens: &mut std::iter::Peekable<T>) -> Result<(), Box<dyn std::error::Error>>
@@ -72,8 +72,15 @@ where
                     return Err("Cannot pipe a nonexistent process".into());
                 }
             }
+            crate::parser::Token::Background => {
+                if let Some(mut command) = child_command.take() {
+                    command.spawn()?;
+                } else {
+                    return Err("& specified but no process to fork".into());
+                }
+            }
             crate::parser::Token::Redirect => {
-                previous_token = Some(crate::parser::Token::Redirect);
+                previous_token = Some(token);
             }
 
             _ => return Err("Unhandled token".into()),
