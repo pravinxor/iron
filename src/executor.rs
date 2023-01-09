@@ -32,7 +32,7 @@ fn redirect<P>(
 where
     P: AsRef<std::path::Path>,
 {
-    let file = std::fs::File::create(path).unwrap();
+    let file = std::fs::File::create(path)?;
     command.stdout(file);
     command.spawn()
 }
