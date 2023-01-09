@@ -82,6 +82,11 @@ where
             crate::parser::Token::Redirect => {
                 previous_token = Some(token);
             }
+            crate::parser::Token::Semicolon => {
+                if let Some(mut remaining_child) = child_command.take() {
+                    remaining_child.spawn()?.wait_with_output()?;
+                }
+            }
 
             _ => return Err("Unhandled token".into()),
         }
